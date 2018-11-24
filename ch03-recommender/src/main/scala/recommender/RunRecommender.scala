@@ -23,7 +23,7 @@ object RunRecommender {
     //创建Spark的对象
     val spark = SparkSession.builder().config(sparkConf).getOrCreate()
     // Optional, but may help avoid errors due to long lineage
-    spark.sparkContext.setCheckpointDir("./ch03-recommender/chkpoint")
+//    spark.sparkContext.setCheckpointDir("./ch03-recommender/chkpoint")
 
     val base = "./ch03-recommender/profiledata_06-May-2005/"
     val rawUserArtistData = spark.read.textFile(base + "user_artist_data.txt")
