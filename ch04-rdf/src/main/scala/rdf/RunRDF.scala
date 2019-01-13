@@ -6,6 +6,7 @@
 
 package rdf
 
+import org.apache.spark.SparkConf
 import org.apache.spark.ml.classification.{DecisionTreeClassifier, RandomForestClassificationModel, RandomForestClassifier}
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.feature.{VectorAssembler, VectorIndexer}
@@ -21,7 +22,8 @@ import scala.util.Random
 object RunRDF {
 
   def main(args: Array[String]): Unit = {
-    val spark = SparkSession.builder().getOrCreate()
+    val sparkConf = new SparkConf().setAppName("RunRDF").setMaster("local[*]")
+    val spark = SparkSession.builder().config(sparkConf).getOrCreate()
     import spark.implicits._
 
     val dataWithoutHeader = spark.read.
@@ -29,25 +31,26 @@ object RunRDF {
       option("header", false).
       csv("./ch04-rdf/covtype.data")
 //      csv("hdfs:///user/ds/covtype.data")
-    //2596,51,3,258,0,510,221,232,148,6279,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,5
+    //2596,51,3,258,0,510,221,232,148,6279,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    // 0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,5
 
     val colNames = Seq(
-        "Elevation", "Aspect", "Slope",
-        "Horizontal_Distance_To_Hydrology", "Vertical_Distance_To_Hydrology",
-        "Horizontal_Distance_To_Roadways",
-        "Hillshade_9am", "Hillshade_Noon", "Hillshade_3pm",
-        "Horizontal_Distance_To_Fire_Points"
+        "Elevation", "Aspect", "Slope", //高度 方面 坡
+        "Horizontal_Distance_To_Hydrology", "Vertical_Distance_To_Hydrology",//水文学的水平距离 水文学的垂直距离
+        "Horizontal_Distance_To_Roadways",//到巷道的水平距离
+        "Hillshade_9am", "Hillshade_Noon", "Hillshade_3pm",//Hillshade上午9时 Hillshade中午 Hillshade下午3时
+        "Horizontal_Distance_To_Fire_Points"//到火点的水平距离
       ) ++ (
-        (0 until 4).map(i => s"Wilderness_Area_$i")
+        (0 until 4).map(i => s"Wilderness_Area_$i")//荒野区域
       ) ++ (
-        (0 until 40).map(i => s"Soil_Type_$i")
+        (0 until 40).map(i => s"Soil_Type_$i")//土壤类型
       ) ++ Seq("Cover_Type")
 
     val data = dataWithoutHeader.toDF(colNames:_*).
       withColumn("Cover_Type", $"Cover_Type".cast("double"))
 
     data.show()
-    data.head
+    println(data.head.mkString("|"))
 
     // Split into 90% train (+ CV), 10% test
     val Array(trainData, testData) = data.randomSplit(Array(0.9, 0.1))
@@ -57,10 +60,10 @@ object RunRDF {
     val runRDF = new RunRDF(spark)
 
     runRDF.simpleDecisionTree(trainData, testData)
-    runRDF.randomClassifier(trainData, testData)
-    runRDF.evaluate(trainData, testData)
-    runRDF.evaluateCategorical(trainData, testData)
-    runRDF.evaluateForest(trainData, testData)
+//    runRDF.randomClassifier(trainData, testData)
+//    runRDF.evaluate(trainData, testData)
+//    runRDF.evaluateCategorical(trainData, testData)
+//    runRDF.evaluateForest(trainData, testData)
 
     trainData.unpersist()
     testData.unpersist()
@@ -75,6 +78,7 @@ class RunRDF(private val spark: SparkSession) {
   def simpleDecisionTree(trainData: DataFrame, testData: DataFrame): Unit = {
 
     val inputCols = trainData.columns.filter(_ != "Cover_Type")
+    println(inputCols mkString "_")
     val assembler = new VectorAssembler().
       setInputCols(inputCols).
       setOutputCol("featureVector")
