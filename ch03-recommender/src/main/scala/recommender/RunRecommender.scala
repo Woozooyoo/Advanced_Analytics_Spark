@@ -31,10 +31,10 @@ object RunRecommender {
     val rawArtistAlias = spark.read.textFile(base + "artist_alias.txt")
 
     val runRecommender = new RunRecommender(spark)
-    runRecommender.preparation(rawUserArtistData, rawArtistData, rawArtistAlias)
+//    runRecommender.preparation(rawUserArtistData, rawArtistData, rawArtistAlias)
 //    runRecommender.model(rawUserArtistData, rawArtistData, rawArtistAlias)
 //    runRecommender.evaluate(rawUserArtistData, rawArtistAlias)
-//    runRecommender.recommend(rawUserArtistData, rawArtistData, rawArtistAlias)
+    runRecommender.recommend(rawUserArtistData, rawArtistData, rawArtistAlias)
   }
 
 }
@@ -88,6 +88,8 @@ class RunRecommender(private val spark: SparkSession) {
 
     trainData.unpersist()
 
+    model.userFactors.show
+    model.itemFactors.show
     model.userFactors.select("features").show(truncate = false)
 
     val userID = 2093760
@@ -99,6 +101,8 @@ class RunRecommender(private val spark: SparkSession) {
     val artistByID = buildArtistByID(rawArtistData)
 
     artistByID.filter($"id" isin (existingArtistIDs:_*)).show()
+
+//    model.recommendForAllUsers(5).filter($"user" === userID).show //resource short
 
     val topRecommendations = makeRecommendations(model, userID, 5)
     topRecommendations.show()
@@ -166,7 +170,7 @@ class RunRecommender(private val spark: SparkSession) {
     val model = new ALS().
       setSeed(Random.nextLong()).
       setImplicitPrefs(true).
-      setRank(10).setRegParam(1.0).setAlpha(40.0).setMaxIter(20).
+      setRank(10).setRegParam(1.0).setAlpha(40.0).setMaxIter(17).
       setUserCol("user").setItemCol("artist").
       setRatingCol("count").setPredictionCol("prediction").
       fit(allData)
